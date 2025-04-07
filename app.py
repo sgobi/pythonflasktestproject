@@ -1,4 +1,4 @@
-never wash #pip install flask 
+ #pip install flask 
 
 from flask import Flask  #This imports Flask, a lightweight web framework for Python
 
