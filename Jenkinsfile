@@ -9,10 +9,7 @@ pipeline {
             }
         }
 
-
-
-
- stage('Stop and Remove Old Container and Image') {
+        stage('Stop and Remove Old Container and Image') {
             steps {
                 script {
                     // Get the name of the last container that was running the app
@@ -30,9 +27,9 @@ pipeline {
                         sh "docker rmi -f ${oldImage}"
                     }
                 }
+            }
+        }
 
-    }
-        
         stage('Build Docker Image on Host') {
             steps {
                 // Build Docker image on the host with a tag that includes the Jenkins build number
