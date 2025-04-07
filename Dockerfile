@@ -1,18 +1,20 @@
-# Use the official Jenkins image
-FROM jenkins/jenkins:lts
+# Use an official Python base image
+FROM python:3.9
 
-# Switch to root user
-USER root
+# Set the working directory in the container
+WORKDIR /app
 
-# Install Docker inside the Jenkins container
-RUN apt-get update && \
-    apt-get install -y apt-transport-https ca-certificates curl software-properties-common && \
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
-    apt-get update && \
-    apt-get install -y docker-ce && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Copy only requirements first (for better caching)
+COPY requirements.txt .
 
-# Set Jenkins user to jenkins (for normal Jenkins operation)
-USER jenkins
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the app files
+COPY . .
+
+# Expose the port Flask runs on
+EXPOSE 5000
+
+# Run the application
+CMD ["python", "app.py"]
