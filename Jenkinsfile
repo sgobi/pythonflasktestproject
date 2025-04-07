@@ -28,6 +28,8 @@
 //         }
 //     }
 // }
+
+
 pipeline {
     agent any
 
@@ -41,9 +43,10 @@ pipeline {
 
         stage('Build Docker Image on Host') {
             steps {
-                // Run docker build on the host machine
+                // Build Docker image on the host with a tag that includes the Jenkins build number
                 script {
-                    sh 'docker build -t my-flask-app .'
+                    def imageTag = "my-flask-app:${env.BUILD_NUMBER}"
+                    sh "docker build -t ${imageTag} ."
                 }
             }
         }
@@ -52,7 +55,8 @@ pipeline {
             steps {
                 // Run the Flask app container on the host
                 script {
-                    sh 'docker run -d -p 5000:5000 --name flask-app my-flask-app'
+                    def imageTag = "my-flask-app:${env.BUILD_NUMBER}"
+                    sh "docker run -d -p 5000:5000 --name flask-app ${imageTag}"
                 }
             }
         }
