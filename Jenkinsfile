@@ -61,50 +61,6 @@ pipeline {
             }
         }
 
-        stage('Update Helm Chart Image Tag') {
-            steps {
-                script {
-                    def imageTag = "${IMAGE_TAG}"
-                    def imageRepo = "${DOCKER_REGISTRY}/${IMAGE_NAME}"
-
-                    // Update values.yaml with the new image tag
-                    sh """
-                    sed -i 's|tag:.*|tag: "${imageTag}"|' helm-chart/values.yaml
-                    sed -i 's|repository:.*|repository: "${imageRepo}"|' helm-chart/values.yaml
-                    """
-                }
-            }
-        }
-
-        stage('Package Helm Chart') {
-            steps {
-                script {
-                    // Package the Helm chart with the image version (tag)
-                    sh "helm package helm-chart/ --version ${IMAGE_TAG} --app-version ${IMAGE_TAG} --destination ."
-                }
-            }
-        }
-
-        stage('Push Helm Chart to Nexus') {
-            steps {
-                script {
-                    // Get the Helm chart package filename
-                    def helmChartPackage = sh(script: "ls *.tgz", returnStdout: true).trim()
-
-                    // Push the packaged Helm chart to Nexus
-                    withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID,
-                                                       usernameVariable: 'NEXUS_USER',
-                                                       passwordVariable: 'NEXUS_PASS')]) {
-                        sh """
-                        curl -v --user $NEXUS_USER:$NEXUS_PASS \
-                        --upload-file ${helmChartPackage} \
-                        http://${DOCKER_REGISTRY}/repository/helm-hosted/
-                        """
-                    }
-                }
-            }
-        }
-
         stage('Run Docker Container on Host') {
             steps {
                 script {
