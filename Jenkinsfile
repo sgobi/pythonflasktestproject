@@ -20,54 +20,12 @@ pipeline {
                 script {
                     def containerName = "flask-app"
 
-                    sh "docker ps -q -f name=${containerName} | xargs -r docker stop"
-                    sh "docker ps -a -q -f name=${containerName} | xargs -r docker rm"
+                    // Stop running container if it exists
+                    sh "docker ps -q -f name=${containerName} | xargs --no-run-if-empty docker stop"
+                    // Remove stopped container if it exists
+                    sh "docker ps -a -q -f name=${containerName} | xargs --no-run-if-empty docker rm"
 
+                    // Remove old image if it exists
                     def oldImage = sh(script: "docker images -q ${IMAGE_NAME}", returnStdout: true).trim()
                     if (oldImage) {
-                        sh "docker rmi -f ${oldImage}"
-                    }
-                }
-            }
-        }
-
-        stage('Build Docker Image on Host') {
-            steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                }
-            }
-        }
-
-        stage('Login to Artifactory Docker Registry') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID,
-                                                     usernameVariable: 'DOCKER_USER',
-                                                     passwordVariable: 'DOCKER_PASS')]) {
-                        sh "docker login -u $DOCKER_USER -p $DOCKER_PASS http://${DOCKER_REGISTRY}"
-                    }
-                }
-            }
-        }
-
-        stage('Tag and Push Docker Image to Artifactory') {
-            steps {
-                script {
-                    def fullImageName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${fullImageName}"
-                    sh "docker push ${fullImageName}"
-                }
-            }
-        }
-
-        stage('Run Docker Container on Host') {
-            steps {
-                script {
-                    def fullImageName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker run -d -p 5000:5000 --name flask-app ${fullImageName}"
-                }
-            }
-        }
-    }
-}
+                        sh "
