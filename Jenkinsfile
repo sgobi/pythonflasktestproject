@@ -6,12 +6,28 @@ pipeline {
         IMAGE_NAME = "my-flask-app"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS_ID = 'docker-nexus-artifactory-repo-creds'
-        HELM_CHART_DIR = "/var/jenkins_home/workspace/myApp/my-flask-app" // Set this path directly
+        HELM_CHART_DIR = "/var/jenkins_home/workspace/myApp/my-flask-app"
         HELM_RELEASE_NAME = "flask-app-release"
         HELM_NAMESPACE = "default"
     }
 
     stages {
+        stage('Check and Install Helm') {
+            steps {
+                script {
+                    def helmExists = sh(script: "which helm || true", returnStdout: true).trim()
+                    if (!helmExists) {
+                        echo "Helm not found. Installing..."
+                        sh '''
+                            curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+                        '''
+                    } else {
+                        echo "Helm is already installed: ${helmExists}"
+                    }
+                }
+            }
+        }
+
         stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/sgobi/pythonflasktestproject.git', branch: 'main'
@@ -69,22 +85,16 @@ pipeline {
         stage('Update tag in values.yaml and Deploy with Helm') {
             steps {
                 script {
-                    // Ensure HELM_CHART_DIR is set properly
                     echo "Helm chart directory: ${env.HELM_CHART_DIR}"
 
                     def valuesPath = "${env.HELM_CHART_DIR}/values.yaml"
                     echo "Updating tag in: ${valuesPath}"
 
-                    // Update the image repository and tag in values.yaml
                     sh """
-                        # Update the repository field
                         sed -i 's|repository:.*|repository: "${DOCKER_REGISTRY}/${IMAGE_NAME}"|' ${valuesPath}
-                        
-                        # Update the tag field (only update if it's empty or contains "")
                         sed -i 's|tag: *""|tag: "${IMAGE_TAG}"|' ${valuesPath}
                     """
 
-                    // Helm install or upgrade
                     sh """
                         helm upgrade --install ${HELM_RELEASE_NAME} ${env.HELM_CHART_DIR} --namespace ${HELM_NAMESPACE} --create-namespace
                     """
