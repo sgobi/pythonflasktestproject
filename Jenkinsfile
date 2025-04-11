@@ -5,7 +5,10 @@ pipeline {
         DOCKER_REGISTRY = "192.168.1.10:8082"
         IMAGE_NAME = "my-flask-app"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
-        DOCKER_CREDENTIALS_ID = 'docker-nexus-artifactory-repo-creds' // Jenkins credentials ID (Username + Password)
+        DOCKER_CREDENTIALS_ID = 'docker-nexus-artifactory-repo-creds'
+        HELM_CHART_PATH = "/home/gobi/project01/my-flask-app"
+        HELM_RELEASE_NAME = "flask-app-release"
+        HELM_NAMESPACE = "default"
     }
 
     stages {
@@ -19,13 +22,8 @@ pipeline {
             steps {
                 script {
                     def containerName = "flask-app"
-
-                    // Stop running container if it exists
                     sh "docker ps -q -f name=${containerName} | xargs --no-run-if-empty docker stop"
-                    // Remove stopped container if it exists
                     sh "docker ps -a -q -f name=${containerName} | xargs --no-run-if-empty docker rm"
-
-                    // Remove old image if it exists
                     def oldImage = sh(script: "docker images -q ${IMAGE_NAME}", returnStdout: true).trim()
                     if (oldImage) {
                         sh "docker rmi -f ${oldImage}"
@@ -34,7 +32,7 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image on Host') {
+        stage('Build Docker Image') {
             steps {
                 script {
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
@@ -45,10 +43,11 @@ pipeline {
         stage('Login to Artifactory Docker Registry') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID,
-                                                     usernameVariable: 'DOCKER_USER',
-                                                     passwordVariable: 'DOCKER_PASS')]) {
-                        // Secure login using --password-stdin
+                    withCredentials([usernamePassword(
+                        credentialsId: env.DOCKER_CREDENTIALS_ID,
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
                         sh """
                             echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin http://${DOCKER_REGISTRY}
                         """
@@ -67,11 +66,18 @@ pipeline {
             }
         }
 
-        stage('Run Docker Container on Host') {
+        stage('Update tag in values.yaml and Deploy using Helm') {
             steps {
                 script {
-                    def fullImageName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker run -d -p 5000:5000 --name flask-app ${fullImageName}"
+                    // Update only the tag field in values.yaml
+                    sh """
+                        sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|' ${HELM_CHART_PATH}/values.yaml
+                    """
+
+                    // Helm install or upgrade
+                    sh """
+                        helm upgrade --install ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} --namespace ${HELM_NAMESPACE} --create-namespace
+                    """
                 }
             }
         }
