@@ -6,7 +6,7 @@ pipeline {
         IMAGE_NAME = "my-flask-app"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS_ID = 'docker-nexus-artifactory-repo-creds'
-        HELM_CHART_DIR = "" // will be dynamically set later
+        HELM_CHART_DIR = "/var/jenkins_home/workspace/myApp/my-flask-app" // Set this path directly
         HELM_RELEASE_NAME = "flask-app-release"
         HELM_NAMESPACE = "default"
     }
@@ -15,26 +15,6 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/sgobi/pythonflasktestproject.git', branch: 'main'
-            }
-        }
-
-        stage('Debug: Locate values.yaml') {
-            steps {
-                script {
-                    // Recursively search for values.yaml file and print the result
-                    def foundPath = sh(script: "find . -name values.yaml | head -n 1", returnStdout: true).trim()
-                    echo "Found path: ${foundPath}"
-
-                    // Ensure the file path is not empty
-                    if (!foundPath) {
-                        error "values.yaml not found in workspace!"
-                    }
-
-                    // Set HELM_CHART_DIR by using dirname to get the directory
-                    env.HELM_CHART_DIR = sh(script: "dirname ${foundPath}", returnStdout: true).trim()
-                    echo "✅ Found values.yaml at: ${foundPath}"
-                    echo "📦 Helm chart path set to: ${env.HELM_CHART_DIR}"
-                }
             }
         }
 
