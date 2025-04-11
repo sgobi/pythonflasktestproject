@@ -30,8 +30,8 @@ pipeline {
                         error "values.yaml not found in workspace!"
                     }
 
-                    // Set HELM_CHART_DIR by stripping the 'values.yaml' part
-                    env.HELM_CHART_DIR = foundPath.replace('/values.yaml', '')
+                    // Set HELM_CHART_DIR by using dirname to get the directory
+                    env.HELM_CHART_DIR = sh(script: "dirname ${foundPath}", returnStdout: true).trim()
                     echo "✅ Found values.yaml at: ${foundPath}"
                     echo "📦 Helm chart path set to: ${env.HELM_CHART_DIR}"
                 }
