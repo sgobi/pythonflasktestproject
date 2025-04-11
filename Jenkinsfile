@@ -6,7 +6,7 @@ pipeline {
         IMAGE_NAME = "my-flask-app"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS_ID = 'docker-nexus-artifactory-repo-creds'
-        HELM_CHART_PATH = "/home/gobi/project01/my-flask-app"
+        HELM_CHART_PATH = "pythonflasktestproject/my-flask-app"
         HELM_RELEASE_NAME = "flask-app-release"
         HELM_NAMESPACE = "default"
     }
@@ -66,10 +66,10 @@ pipeline {
             }
         }
 
-        stage('Update tag in values.yaml and Deploy using Helm') {
+        stage('Update tag in values.yaml and Deploy with Helm') {
             steps {
                 script {
-                    // Update only the tag field in values.yaml
+                    // Update only the image tag in the correct path
                     sh """
                         sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|' ${HELM_CHART_PATH}/values.yaml
                     """
