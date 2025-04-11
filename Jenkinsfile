@@ -56,6 +56,16 @@ pipeline {
             }
         }
 
+        stage('Clean Jenkins Workspace') {
+            steps {
+                script {
+                    echo "Cleaning up Jenkins workspace before pushing image..."
+                    // This will delete everything except the build workspace and .git if it exists
+                    sh 'rm -rf * .[^.]* || true'
+                }
+            }
+        }
+
         stage('Login to Artifactory Docker Registry') {
             steps {
                 script {
@@ -86,7 +96,6 @@ pipeline {
             steps {
                 script {
                     echo "Helm chart directory: ${env.HELM_CHART_DIR}"
-
                     def valuesPath = "${env.HELM_CHART_DIR}/values.yaml"
                     echo "Updating tag in: ${valuesPath}"
 
