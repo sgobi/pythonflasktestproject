@@ -7,12 +7,13 @@ pipeline {
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS_ID = 'docker-nexus-artifactory-repo-creds'
         HELM_CHART_DIR = "/var/jenkins_home/workspace/myApp/my-flask-app"
-        HELM_RELEASE_NAME = "flask-app-release"
+        HELM_REPO_URL = "http://192.168.1.10:8081/repository/myprojecthelmc/"
+        HELM_CHART_NAME = "my-flask-app"
         HELM_NAMESPACE = "default"
+        HELM_ARTIFACTORY_CREDS = 'nexus-helm-credentials' // Add this as Jenkins usernamePassword
     }
 
     stages {
-
         stage('Check and Install Helm') {
             steps {
                 script {
@@ -25,15 +26,6 @@ pipeline {
                     } else {
                         echo "Helm is already installed: ${helmExists}"
                     }
-                }
-            }
-        }
-
-        stage('Clean Jenkins Workspace') {
-            steps {
-                script {
-                    echo "Cleaning Jenkins workspace before cloning..."
-                    cleanWs()
                 }
             }
         }
@@ -60,13 +52,11 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                }
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
-        stage('Login to Artifactory Docker Registry') {
+        stage('Login to Docker Registry') {
             steps {
                 script {
                     withCredentials([usernamePassword(
@@ -92,21 +82,25 @@ pipeline {
             }
         }
 
-        stage('Update tag in values.yaml and Deploy with Helm') {
+        stage('Package and Upload Helm Chart') {
             steps {
                 script {
-                    echo "Helm chart directory: ${env.HELM_CHART_DIR}"
-                    def valuesPath = "${env.HELM_CHART_DIR}/values.yaml"
-                    echo "Updating tag in: ${valuesPath}"
+                    dir(env.HELM_CHART_DIR) {
+                        sh "helm package ."
+                    }
 
-                    sh """
-                        sed -i 's|repository:.*|repository: "${DOCKER_REGISTRY}/${IMAGE_NAME}"|' ${valuesPath}
-                        sed -i 's|tag: *""|tag: "${IMAGE_TAG}"|' ${valuesPath}
-                    """
+                    def chartTgz = "${HELM_CHART_DIR}/${HELM_CHART_NAME}-0.1.0.tgz"
+                    echo "Helm chart packaged at: ${chartTgz}"
 
-                    sh """
-                        helm upgrade --install ${HELM_RELEASE_NAME} ${env.HELM_CHART_DIR} --namespace ${HELM_NAMESPACE} --create-namespace
-                    """
+                    withCredentials([usernamePassword(
+                        credentialsId: env.HELM_ARTIFACTORY_CREDS,
+                        usernameVariable: 'NEXUS_USER',
+                        passwordVariable: 'NEXUS_PASS'
+                    )]) {
+                        sh """
+                            curl -u \$NEXUS_USER:\$NEXUS_PASS --upload-file ${chartTgz} ${HELM_REPO_URL}${HELM_CHART_NAME}-0.1.0.tgz
+                        """
+                    }
                 }
             }
         }
