@@ -68,7 +68,13 @@ pipeline {
 
         stage('Update tag in values.yaml and Deploy with Helm') {
             steps {
-                script {
+                script {  
+                                def valuesPath = "${env.WORKSPACE}/pythonflasktestproject/my-flask-app/values.yaml"
+            echo "values.yaml is located at: ${valuesPath}"
+            sh "ls -l ${valuesPath}" // just to confirm it exists
+
+
+                    
                     // Update only the image tag in the correct path
                     sh """
                         sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|' ${HELM_CHART_PATH}/values.yaml
