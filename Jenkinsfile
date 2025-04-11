@@ -21,11 +21,16 @@ pipeline {
         stage('Debug: Locate values.yaml') {
             steps {
                 script {
-                    // Recursively search for values.yaml file
+                    // Recursively search for values.yaml file and print the result
                     def foundPath = sh(script: "find . -name values.yaml | head -n 1", returnStdout: true).trim()
+                    echo "Found path: ${foundPath}"
+
+                    // Ensure the file path is not empty
                     if (!foundPath) {
                         error "values.yaml not found in workspace!"
                     }
+
+                    // Set HELM_CHART_DIR by stripping the 'values.yaml' part
                     env.HELM_CHART_DIR = foundPath.replace('/values.yaml', '')
                     echo "✅ Found values.yaml at: ${foundPath}"
                     echo "📦 Helm chart path set to: ${env.HELM_CHART_DIR}"
@@ -84,9 +89,13 @@ pipeline {
         stage('Update tag in values.yaml and Deploy with Helm') {
             steps {
                 script {
-                    def valuesPath = "${env.HELM_CHART_DIR}/values.yaml"
+                    // Ensure HELM_CHART_DIR is set properly
+                    echo "Helm chart directory: ${env.HELM_CHART_DIR}"
 
-                    // Update only the image tag (not repository)
+                    def valuesPath = "${env.HELM_CHART_DIR}/values.yaml"
+                    echo "Updating tag in: ${valuesPath}"
+
+                    // Update the image tag in values.yaml
                     sh """
                         sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|' ${valuesPath}
                     """
