@@ -97,8 +97,11 @@ pipeline {
 
                     // Update the image repository and tag in values.yaml
                     sh """
+                        # Update the repository field
                         sed -i 's|repository:.*|repository: "${DOCKER_REGISTRY}/${IMAGE_NAME}"|' ${valuesPath}
-                        sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|' ${valuesPath}
+                        
+                        # Update the tag field (only update if it's empty or contains "")
+                        sed -i 's|tag: *""|tag: "${IMAGE_TAG}"|' ${valuesPath}
                     """
 
                     // Helm install or upgrade
