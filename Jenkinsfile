@@ -77,7 +77,7 @@ pipeline {
                     
                     // Update only the image tag in the correct path
                     sh """
-                        sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|' ${HELM_CHART_PATH}/values.yaml
+                        sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|'  ${valuesPath}
                     """
 
                     // Helm install or upgrade
