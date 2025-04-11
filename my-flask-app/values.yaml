@@ -1,0 +1,18 @@
+replicaCount: 1
+
+image:
+  repository: 192.168.1.10:8082/my-flask-app
+  pullPolicy: IfNotPresent
+  tag: "" #"22"  # Use empty if you're using an image ID directly
+
+service:
+  type: NodePort  # Change from ClusterIP to NodePort to expose the service externally
+  port: 5000
+  nodePort: 30000  # Expose on port 30000, or choose any available port
+containerPort: 5000
+
+ingress:
+  enabled: false
+
+
+resources: {}  # You can define CPU and memory limits here
