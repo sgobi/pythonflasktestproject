@@ -10,8 +10,7 @@ pipeline {
         HELM_REPO_URL = "http://192.168.1.10:8081/repository/myprojecthelmc/"
         HELM_CHART_NAME = "my-flask-app"
         HELM_NAMESPACE = "default"
-        HELM_ARTIFACTORY_CREDS = 'nexus-helm-credentials'
-        VERSION = "1.0.${env.BUILD_NUMBER}" // Semantic versioning, using BUILD_NUMBER for patch version
+        HELM_ARTIFACTORY_CREDS = 'nexus-helm-credentials' // Add this as Jenkins usernamePassword
     }
 
     stages {
@@ -86,22 +85,20 @@ pipeline {
         stage('Package and Upload Helm Chart') {
             steps {
                 script {
-                    // Package the Helm chart
                     dir(env.HELM_CHART_DIR) {
-                        sh "helm package . --version ${env.VERSION}"
+                        sh "helm package ."
                     }
 
-                    def chartTgz = "${HELM_CHART_DIR}/${HELM_CHART_NAME}-${env.VERSION}.tgz"
+                    def chartTgz = "${HELM_CHART_DIR}/${HELM_CHART_NAME}-0.1.0.tgz"
                     echo "Helm chart packaged at: ${chartTgz}"
 
-                    // Upload the packaged Helm chart to Nexus repository
                     withCredentials([usernamePassword(
                         credentialsId: env.HELM_ARTIFACTORY_CREDS,
                         usernameVariable: 'NEXUS_USER',
                         passwordVariable: 'NEXUS_PASS'
                     )]) {
                         sh """
-                            curl -u \$NEXUS_USER:\$NEXUS_PASS --upload-file ${chartTgz} ${HELM_REPO_URL}${HELM_CHART_NAME}-${env.VERSION}.tgz
+                            curl -u \$NEXUS_USER:\$NEXUS_PASS --upload-file ${chartTgz} ${HELM_REPO_URL}${HELM_CHART_NAME}-0.1.0.tgz
                         """
                     }
                 }
