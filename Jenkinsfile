@@ -6,7 +6,7 @@ pipeline {
         IMAGE_NAME = "my-flask-app"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS_ID = 'docker-nexus-artifactory-repo-creds'
-        HELM_CHART_DIR = "" // will be dynamically set later
+        HELM_CHART_PATH = "pythonflasktestproject/my-flask-app"  // Path to the Helm chart
         HELM_RELEASE_NAME = "flask-app-release"
         HELM_NAMESPACE = "default"
     }
@@ -21,19 +21,16 @@ pipeline {
         stage('Debug: Locate values.yaml') {
             steps {
                 script {
-                    // Recursively search for values.yaml file and print the result
-                    def foundPath = sh(script: "find . -name values.yaml | head -n 1", returnStdout: true).trim()
-                    echo "Found path: ${foundPath}"
+                    // Recursively search for the values.yaml file and print the result
+                    def valuesPath = "${env.WORKSPACE}/pythonflasktestproject/my-flask-app/values.yaml"
+                    echo "Found values.yaml at: ${valuesPath}"
 
-                    // Ensure the file path is not empty
-                    if (!foundPath) {
-                        error "values.yaml not found in workspace!"
+                    // Ensure the file exists
+                    sh "ls -l ${valuesPath}"
+
+                    if (!fileExists(valuesPath)) {
+                        error "values.yaml not found in the workspace!"
                     }
-
-                    // Set HELM_CHART_DIR by using dirname to get the directory
-                    env.HELM_CHART_DIR = sh(script: "dirname ${foundPath}", returnStdout: true).trim()
-                    echo "✅ Found values.yaml at: ${foundPath}"
-                    echo "📦 Helm chart path set to: ${env.HELM_CHART_DIR}"
                 }
             }
         }
@@ -89,20 +86,18 @@ pipeline {
         stage('Update tag in values.yaml and Deploy with Helm') {
             steps {
                 script {
-                    // Ensure HELM_CHART_DIR is set properly
-                    echo "Helm chart directory: ${env.HELM_CHART_DIR}"
+                    def valuesPath = "${env.WORKSPACE}/pythonflasktestproject/my-flask-app/values.yaml"
+                    echo "Updating tag and repository in values.yaml at: ${valuesPath}"
 
-                    def valuesPath = "${env.HELM_CHART_DIR}/values.yaml"
-                    echo "Updating tag in: ${valuesPath}"
-
-                    // Update the image tag in values.yaml
+                    // Update the repository and tag in values.yaml
                     sh """
+                        sed -i 's|repository:.*|repository: "${DOCKER_REGISTRY}/${IMAGE_NAME}"|' ${valuesPath}
                         sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|' ${valuesPath}
                     """
 
-                    // Helm install or upgrade
+                    // Deploy with Helm
                     sh """
-                        helm upgrade --install ${HELM_RELEASE_NAME} ${env.HELM_CHART_DIR} --namespace ${HELM_NAMESPACE} --create-namespace
+                        helm upgrade --install ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} --namespace ${HELM_NAMESPACE} --create-namespace
                     """
                 }
             }
