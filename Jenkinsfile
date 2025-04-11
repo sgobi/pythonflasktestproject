@@ -12,6 +12,7 @@ pipeline {
     }
 
     stages {
+
         stage('Check and Install Helm') {
             steps {
                 script {
@@ -24,6 +25,15 @@ pipeline {
                     } else {
                         echo "Helm is already installed: ${helmExists}"
                     }
+                }
+            }
+        }
+
+        stage('Clean Jenkins Workspace') {
+            steps {
+                script {
+                    echo "Cleaning Jenkins workspace before cloning..."
+                    cleanWs()
                 }
             }
         }
@@ -52,16 +62,6 @@ pipeline {
             steps {
                 script {
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                }
-            }
-        }
-
-        stage('Clean Jenkins Workspace') {
-            steps {
-                script {
-                    echo "Cleaning up Jenkins workspace before pushing image..."
-                    // This will delete everything except the build workspace and .git if it exists
-                    sh 'rm -rf * .[^.]* || true'
                 }
             }
         }
